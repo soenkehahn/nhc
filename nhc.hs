@@ -17,19 +17,18 @@ import System.Environment
 
 
 main :: IO ()
-main = do
-    (defaultFile : hdevtoolsArgs) <- getArgs
-    run defaultFile hdevtoolsArgs
+main =
+    run =<< getArgs
 
-run :: FilePath -> [String] -> IO ()
-run defaultFile hdevtoolsArgs = do
+run :: [String] -> IO ()
+run hdevtoolsArgs = do
     -- prerequisites
     cabalFile <- getCabalFile
-    checkFileExists defaultFile
+    defaultFile <- createDefaultNixFileIfMissing (takeBaseName cabalFile)
     nhcFile <- createNhcNixFileIfMissing
-    --
+    -- building the environment
     nixBuild cabalFile nhcFile
-    --
+    -- entering the environment and invoking hdevtools
     check hdevtoolsArgs
 
 
@@ -39,6 +38,19 @@ getCabalFile = do
         getDirectoryContents "."
     case fs of
         [f] -> return f
+
+createDefaultNixFileIfMissing :: String -> IO FilePath
+createDefaultNixFileIfMissing packageName = do
+    exists <- fileExist "default.nix"
+    when (not exists) $
+        writeFile "default.nix" [i|
+            { pkgs ? import <nixpkgs> {},
+              src ? ./. } :
+            {
+                build = pkgs.haskellPackages.buildLocalCabal src "#{packageName}";
+            }
+          |]
+    return "default.nix"
 
 -- | Creates a file 'nhc.nix' that is used to build the environment for
 -- checking the haskell sources. If the file already exists it is left
@@ -127,11 +139,3 @@ stopHdevtoolsIfNecessary = do
                 [i|hdevtools --stop-server|]
             putStrLn out
             hPutStrLn stderr err
-
-
--- utils
-
-checkFileExists file = do
-    exists <- doesFileExist file
-    when (not exists) $
-        throwIO $ ErrorCall ("file not found: " ++ file)
