@@ -61,7 +61,6 @@ createNhcNixFileIfMissing = do
     exists <- doesFileExist "nhc.nix"
     when (not exists) $ do
         writeFile "nhc.nix" $ [i|
-            with builtins;
 
             let
 
@@ -70,11 +69,17 @@ createNhcNixFileIfMissing = do
                     haskellPackages = originalPkgs.haskellPackages_ghc763;
                 };
 
+                git_hdevtools_src = pkgs.fetchgit {
+                    url = "git@github.com:maximkulkin/hdevtools.git";
+                    rev = "b0b0c15ed2cad92dd3b88e609f69d492e75e2e98";
+                    sha256 = "0c221c889c324aea15fe53528896447de8210bd519077258a99c681ca517ff5b";
+                };
+
                 hsEnv = pkgs.haskellPackages.ghcWithPackages
                     (hsPkgs :
                      let package = (hsPkgs.callPackage ./default.nix { inherit pkgs; }).build;
                      in
-                        [hsPkgs.hdevtools] ++
+                        [ (hsPkgs.buildLocalCabal git_hdevtools_src "hdevtools") ] ++
                         package.buildInputs ++
                         package.nativeBuildInputs ++
                         package.propagatedBuildInputs ++
