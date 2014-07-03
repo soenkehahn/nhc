@@ -70,7 +70,7 @@ createNhcNixFileIfMissing = do
                 };
 
                 git_hdevtools_src = pkgs.fetchgit {
-                    url = "git@github.com:maximkulkin/hdevtools.git";
+                    url = "https://github.com/maximkulkin/hdevtools.git";
                     rev = "b0b0c15ed2cad92dd3b88e609f69d492e75e2e98";
                     sha256 = "0c221c889c324aea15fe53528896447de8210bd519077258a99c681ca517ff5b";
                 };
