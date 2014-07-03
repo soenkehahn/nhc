@@ -6,7 +6,6 @@
 import Control.Applicative
 import Control.Monad
 import Control.Exception
-import Options
 import Data.String.Interpolate
 import System.Process (system, readProcessWithExitCode)
 import System.Directory
@@ -14,28 +13,16 @@ import System.Exit
 import System.FilePath
 import System.IO
 import System.Posix.Files
+import System.Environment
 
-
-data NhcOptions = NhcOptions {
-    optMessage :: String,
-    optQuiet :: Bool
-  }
-    deriving Show
-
-instance Options NhcOptions where
-    defineOptions = NhcOptions <$>
-        simpleOption "message" "Hello world!"
-            "A message to show the user." <*>
-        simpleOption "quiet" False
-            "Whether to be quiet."
 
 main :: IO ()
-main = runCommand $ \ opts args -> case args of
-    (defaultFile : haskellFiles) -> run opts defaultFile haskellFiles
-    _ -> error "missing or too many arguments"
+main = do
+    (defaultFile : hdevtoolsArgs) <- getArgs
+    run defaultFile hdevtoolsArgs
 
-run :: NhcOptions -> FilePath -> [FilePath] -> IO ()
-run options defaultFile haskellFiles = do
+run :: FilePath -> [String] -> IO ()
+run defaultFile hdevtoolsArgs = do
     -- prerequisites
     cabalFile <- getCabalFile
     checkFileExists defaultFile
@@ -43,7 +30,7 @@ run options defaultFile haskellFiles = do
     --
     nixBuild cabalFile nhcFile
     --
-    check haskellFiles
+    check hdevtoolsArgs
 
 
 getCabalFile :: IO FilePath
@@ -117,15 +104,13 @@ nixBuild cabalFile nhcFile = do
         return ()
 
 -- | Performs the actual check
-check :: [FilePath] -> IO ()
-check haskellFiles = do
+check :: [String] -> IO ()
+check hdevtoolsArgs = do
     stopHdevtoolsIfNecessary
-    forM_ haskellFiles $ \ haskellFile -> do
-        hPutStrLn stderr [i|checking #{haskellFile}...|]
-        (ec, out, err) <- readProcessWithExitCode "./result/bin/load-env-nhc-build" []
-            [i|hdevtools check #{haskellFile}|]
-        putStrLn out
-        hPutStrLn stderr err
+    (ec, out, err) <- readProcessWithExitCode "./result/bin/load-env-nhc-build" []
+        [i|hdevtools #{unwords hdevtoolsArgs}|]
+    putStrLn out
+    hPutStrLn stderr err
 
 -- | hdevtools starts a background daemon in the environment it is first
 -- invocated in. If 'result' is newer than the hdevtools socket, we have

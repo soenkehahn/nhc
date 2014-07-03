@@ -20,7 +20,6 @@ executable nhc
   build-depends:
     base,
     interpolate,
-    options,
     unix,
     filepath,
     directory,
