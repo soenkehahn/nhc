@@ -100,7 +100,7 @@ nixBuild cabalFile nhcFile = do
     run = do
         hPutStrLn stderr "building..."
                                          -- yeah, I know, this is bad.
-        ExitSuccess <- system "nix-build -I /home/shahn/zalora/nix nhc.nix"
+        ExitSuccess <- system "nix-build -I /home/shahn/zalora/nix nhc.nix -j4"
         return ()
 
 -- | Performs the actual check
