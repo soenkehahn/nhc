@@ -34,7 +34,9 @@ run hdevtoolsArgs = do
 
 getCabalFile :: IO FilePath
 getCabalFile = do
-    fs <- filter ((== ".cabal") . takeExtension) <$>
+    fs <-
+        filter (not . null . takeBaseName) <$>
+        filter ((== ".cabal") . takeExtension) <$>
         getDirectoryContents "."
     case fs of
         [f] -> return f
