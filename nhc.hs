@@ -4,16 +4,17 @@
 
 
 import Control.Applicative
-import Control.Monad
+import Control.Arrow
 import Control.Exception
+import Control.Monad
 import Data.String.Interpolate
-import System.Process (system, readProcessWithExitCode)
 import System.Directory
+import System.Environment
 import System.Exit
 import System.FilePath
 import System.IO
 import System.Posix.Files
-import System.Environment
+import System.Process (system, readProcessWithExitCode)
 
 
 main :: IO ()
@@ -45,7 +46,7 @@ createDefaultNixFileIfMissing :: String -> IO FilePath
 createDefaultNixFileIfMissing packageName = do
     exists <- fileExist "default.nix"
     when (not exists) $
-        writeFile "default.nix" [i|
+        writeFile "default.nix" $ normalizeLines [i|
             { pkgs ? import <nixpkgs> {},
               src ? ./. } :
             {
@@ -62,7 +63,7 @@ createNhcNixFileIfMissing :: IO FilePath
 createNhcNixFileIfMissing = do
     exists <- doesFileExist "nhc.nix"
     when (not exists) $ do
-        writeFile "nhc.nix" $ [i|
+        writeFile "nhc.nix" $ normalizeLines [i|
 
             let
 
@@ -145,3 +146,28 @@ stopHdevtoolsIfNecessary = do
                 [i|hdevtools --stop-server|]
             putStrLn out
             hPutStrLn stderr err
+
+
+-- utils
+
+-- | Normalizes lines as the nix lines literals do.
+--
+-- >>> normalizeLines " \n \n  foo\n\n  bar\n    baz\n \n"
+-- "foo\n\nbar\n  baz\n"
+normalizeLines :: String -> String
+normalizeLines =
+    lines >>>
+    -- convert whitespace lines to empty lines
+    map (\ line -> if all (== ' ') line then "" else line) >>>
+    -- strip empty lines at start and end
+    dropWhile null >>> reverse >>> dropWhile null >>> reverse >>>
+    -- strip indentation
+    stripIndentation >>>
+    unlines
+  where
+    stripIndentation :: [String] -> [String]
+    stripIndentation ls =
+        let indent = minimum $
+                map (length . takeWhile (== ' ')) $
+                filter (not . null) ls
+        in map (drop indent) ls
