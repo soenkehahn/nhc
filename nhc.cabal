@@ -25,7 +25,8 @@ executable nhc
     unix,
     filepath,
     directory,
-    process
+    process,
+    safe
   default-language:    Haskell2010
 
 test-suite spec

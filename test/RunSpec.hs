@@ -34,3 +34,7 @@ spec = do
     it "allows you to run normal shell commands" $ insideSafe $ do
       (output, _) <- capture $ run ["echo", "foo"]
       output `shouldBe` "foo\n"
+
+    it "allows to execute runhaskell with needed dependencies in place" $ insideSafe $ do
+      (output, _) <- capture $ run $ words "runhaskell Main.hs"
+      output `shouldBe` "Nothing\n"

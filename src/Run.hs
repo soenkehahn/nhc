@@ -7,6 +7,7 @@ import Control.Arrow
 import Control.Exception
 import Control.Monad
 import Data.String.Interpolate
+import Safe
 import System.Directory
 import System.Environment
 import System.Exit
@@ -124,7 +125,7 @@ performCommand command = do
     stopHdevtoolsIfNecessary
     (ec, out, err) <- readProcessWithExitCode "./result/bin/load-env-nhc-build" []
         (unwords command)
-    putStrLn (init $ drop (length "env-nhc-build loaded\n") out)
+    putStrLn (initSafe $ drop (length "env-nhc-build loaded\n") out)
     hPutStrLn stderr err
 
 -- | hdevtools starts a background daemon in the environment it is first
