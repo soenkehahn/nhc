@@ -8,13 +8,11 @@ import Control.Exception
 import Control.Monad
 import Data.String.Interpolate
 import System.Directory
-import System.Environment
 import System.Exit
 import System.FilePath
 import System.IO
 import System.Posix.Files
 import System.Process (system, readProcessWithExitCode)
-import Data.List
 import System.IO.Silently
 import System.SetEnv
 
@@ -24,7 +22,7 @@ run command = do
     -- prerequisites
     cabalFile <- getCabalFile
     defaultFile <- createDefaultNixFileIfMissing (takeBaseName cabalFile)
-    nhcFile <- createNhcNixFileIfMissing
+    nhcFile <- createNhcNixFileIfMissing defaultFile
     -- building the environment
     nixBuild cabalFile nhcFile
     -- entering the environment and performing the given command
@@ -53,14 +51,14 @@ createDefaultNixFileIfMissing packageName = do
                 build = pkgs.haskellPackages.buildLocalCabal src "#{packageName}";
             }
           |]
-    return "default.nix"
+    return "./default.nix"
 
 -- | Creates a file 'nhc.nix' that is used to build the environment for
 -- checking the haskell sources. If the file already exists it is left
 -- untouched. This allows for modifying the build environment, e.g. for
 -- profiling.
-createNhcNixFileIfMissing :: IO FilePath
-createNhcNixFileIfMissing = do
+createNhcNixFileIfMissing :: FilePath -> IO FilePath
+createNhcNixFileIfMissing defaultFile = do
     exists <- doesFileExist "nhc.nix"
     when (not exists) $ do
         writeFile "nhc.nix" $ normalizeLines [i|
@@ -80,7 +78,7 @@ createNhcNixFileIfMissing = do
 
                 hsEnv = pkgs.haskellPackages.ghcWithPackages
                     (hsPkgs :
-                     let package = (hsPkgs.callPackage ./default.nix { inherit pkgs; }).build;
+                     let package = (hsPkgs.callPackage #{defaultFile} { inherit pkgs; }).build;
                      in
                         [ (hsPkgs.buildLocalCabal git_hdevtools_src "hdevtools") ] ++
                         package.buildInputs ++
@@ -127,7 +125,7 @@ performCommand :: [String] -> IO ()
 performCommand command = do
     stopHdevtoolsIfNecessary
     unsetEnv "_PATH"
-    ("", (ec, out, err)) <- capture $ readProcessWithExitCode "./result/bin/load-env-nhc-build" []
+    ("", (_ec, out, err)) <- capture $ readProcessWithExitCode "./result/bin/load-env-nhc-build" []
       (unwords command)
     putStrLn out
     hPutStrLn stderr err
@@ -143,7 +141,7 @@ stopHdevtoolsIfNecessary = do
         hdevSocketModTime <- modificationTime <$> getSymbolicLinkStatus ".hdevtools.sock"
         resultModTime <- modificationTime <$> getSymbolicLinkStatus "result"
         when (resultModTime >= hdevSocketModTime) $ do
-            (ec, out, err) <- readProcessWithExitCode "./result/bin/load-env-nhc-build" []
+            (_ec, out, err) <- readProcessWithExitCode "./result/bin/load-env-nhc-build" []
                 [i|hdevtools --stop-server|]
             putStrLn out
             hPutStrLn stderr err

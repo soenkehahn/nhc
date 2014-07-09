@@ -4,16 +4,14 @@ module RunSpec where
 
 
 import Test.Hspec
-import Test.QuickCheck
 
-import Data.List
 import Control.Exception
 import System.Directory
 import System.IO.Silently
 import System.IO.Temp
 import System.Process
 import System.FilePath
-import System.SetEnv
+import System.Exit
 
 import Run
 
@@ -31,7 +29,7 @@ insideExample name action = withSystemTempDirectory "nhc-test-suite" $
   where
     start tmpDir = do
       outerDirectory <- getCurrentDirectory
-      system ("cp -r test/examples/" ++ name ++ " " ++ tmpDir)
+      ExitSuccess <- system ("cp -r test/examples/" ++ name ++ " " ++ tmpDir)
       setCurrentDirectory (tmpDir </> name)
       return outerDirectory
     end outerDirectory = do
@@ -55,5 +53,5 @@ spec = do
       return ()
 
     it "executes cabal test" $ insideBifunctors $ do
-      capture $ run $ words "cabal test"
+      _ <- capture $ run $ words "cabal test"
       return ()
