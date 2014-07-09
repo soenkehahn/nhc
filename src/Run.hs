@@ -17,7 +17,7 @@ import System.IO.Silently
 import System.SetEnv
 
 
-run :: [String] -> IO ()
+run :: [String] -> IO ExitCode
 run command = do
     -- prerequisites
     cabalFile <- getCabalFile
@@ -121,14 +121,15 @@ nixBuild cabalFile nhcFile = do
         return ()
 
 -- | Performs the command inside the environment.
-performCommand :: [String] -> IO ()
+performCommand :: [String] -> IO ExitCode
 performCommand command = do
     stopHdevtoolsIfNecessary
     unsetEnv "_PATH"
-    ("", (_ec, out, err)) <- capture $ readProcessWithExitCode "./result/bin/load-env-nhc-build" []
+    ("", (ec, out, err)) <- capture $ readProcessWithExitCode "./result/bin/load-env-nhc-build" []
       (unwords command)
     putStrLn out
     hPutStrLn stderr err
+    return ec
 
 -- | hdevtools starts a background daemon in the environment it is first
 -- invocated in. If 'result' is newer than the hdevtools socket, we have

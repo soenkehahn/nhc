@@ -48,6 +48,12 @@ spec = do
       (output, _) <- capture $ run $ words "runhaskell Main.hs"
       lines output `shouldContain` ["(2,0)"]
 
+    it "returns the same exit code as the executed command" $ insideBifunctors $ do
+      ec1 <- run $ words "true"
+      ec1 `shouldBe` ExitSuccess
+      ec2 <- run $ words "false"
+      ec2 `shouldBe` ExitFailure 1
+
     it "executes cabal build" $ insideBifunctors $ do
       _ <- capture $ run $ words "cabal build"
       return ()
