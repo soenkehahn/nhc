@@ -1,7 +1,6 @@
-#!/usr/bin/env runhaskell
-
 {-# LANGUAGE ScopedTypeVariables, QuasiQuotes #-}
 
+module Run where
 
 import Control.Applicative
 import Control.Arrow
@@ -16,10 +15,6 @@ import System.IO
 import System.Posix.Files
 import System.Process (system, readProcessWithExitCode)
 
-
-main :: IO ()
-main =
-    run =<< getArgs
 
 run :: [String] -> IO ()
 run hdevtoolsArgs = do

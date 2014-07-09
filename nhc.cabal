@@ -16,7 +16,9 @@ extra-source-files:  README.md
 cabal-version:       >=1.10
 
 executable nhc
-  main-is: nhc.hs
+  main-is: Main.hs
+  hs-source-dirs:
+    src
   build-depends:
     base,
     interpolate,
@@ -24,5 +26,4 @@ executable nhc
     filepath,
     directory,
     process
-  -- hs-source-dirs:      
   default-language:    Haskell2010
