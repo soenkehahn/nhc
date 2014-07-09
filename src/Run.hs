@@ -17,15 +17,15 @@ import System.Process (system, readProcessWithExitCode)
 
 
 run :: [String] -> IO ()
-run hdevtoolsArgs = do
+run command = do
     -- prerequisites
     cabalFile <- getCabalFile
     defaultFile <- createDefaultNixFileIfMissing (takeBaseName cabalFile)
     nhcFile <- createNhcNixFileIfMissing
     -- building the environment
     nixBuild cabalFile nhcFile
-    -- entering the environment and invoking hdevtools
-    check hdevtoolsArgs
+    -- entering the environment and performing the given command
+    performCommand command
 
 
 getCabalFile :: IO FilePath
@@ -36,6 +36,7 @@ getCabalFile = do
         getDirectoryContents "."
     case fs of
         [f] -> return f
+        [] -> throwIO $ ErrorCall "no cabal file found"
 
 createDefaultNixFileIfMissing :: String -> IO FilePath
 createDefaultNixFileIfMissing packageName = do
@@ -117,13 +118,13 @@ nixBuild cabalFile nhcFile = do
         ExitSuccess <- system "nix-build nhc.nix -j4"
         return ()
 
--- | Performs the actual check
-check :: [String] -> IO ()
-check hdevtoolsArgs = do
+-- | Performs the command inside the environment.
+performCommand :: [String] -> IO ()
+performCommand command = do
     stopHdevtoolsIfNecessary
     (ec, out, err) <- readProcessWithExitCode "./result/bin/load-env-nhc-build" []
-        [i|hdevtools #{unwords hdevtoolsArgs}|]
-    putStrLn out
+        (unwords command)
+    putStrLn (init $ drop (length "env-nhc-build loaded\n") out)
     hPutStrLn stderr err
 
 -- | hdevtools starts a background daemon in the environment it is first
