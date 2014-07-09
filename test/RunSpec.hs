@@ -1,11 +1,19 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module RunSpec where
 
 
 import Test.Hspec
+import Test.QuickCheck
+
+import Data.List
 import Control.Exception
 import System.Directory
 import System.IO.Silently
+import System.IO.Temp
+import System.Process
+import System.FilePath
+import System.SetEnv
 
 import Run
 
@@ -14,27 +22,38 @@ main :: IO ()
 main = hspec spec
 
 -- | executes the given function inside the safe example project
-insideSafe :: IO () -> IO ()
-insideSafe = withWorkingDirectory "./test/safe-example"
+insideBifunctors :: IO () -> IO ()
+insideBifunctors = insideExample "bifunctors"
 
-withWorkingDirectory :: FilePath -> IO () -> IO ()
-withWorkingDirectory dir action = bracket start end (const action)
+insideExample :: String -> IO () -> IO ()
+insideExample name action = withSystemTempDirectory "nhc-test-suite" $
+    \ tmpDir -> bracket (start tmpDir) end (const action)
   where
-    start = do
-      tmp <- getCurrentDirectory
-      setCurrentDirectory dir
-      return tmp
-    end tmp = do
-      setCurrentDirectory tmp
+    start tmpDir = do
+      outerDirectory <- getCurrentDirectory
+      system ("cp -r test/examples/" ++ name ++ " " ++ tmpDir)
+      setCurrentDirectory (tmpDir </> name)
+      return outerDirectory
+    end outerDirectory = do
+      setCurrentDirectory outerDirectory
 
 
 spec :: Spec
 spec = do
-  describe "run" $ do
-    it "allows you to run normal shell commands" $ insideSafe $ do
-      (output, _) <- capture $ run ["echo", "foo"]
-      output `shouldBe` "foo\n"
 
-    it "allows to execute runhaskell with needed dependencies in place" $ insideSafe $ do
+  describe "run" $ do
+    it "executes normal shell commands" $ insideBifunctors $ do
+      (output, _) <- capture $ run ["echo", "foo"]
+      lines output `shouldContain` ["foo"]
+
+    it "executes runhaskell with needed dependencies in place" $ insideBifunctors $ do
       (output, _) <- capture $ run $ words "runhaskell Main.hs"
-      output `shouldBe` "Nothing\n"
+      lines output `shouldContain` ["(2,0)"]
+
+    it "executes cabal build" $ insideBifunctors $ do
+      _ <- capture $ run $ words "cabal build"
+      return ()
+
+    it "executes cabal test" $ insideBifunctors $ do
+      capture $ run $ words "cabal test"
+      return ()

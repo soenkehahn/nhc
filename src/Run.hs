@@ -7,7 +7,6 @@ import Control.Arrow
 import Control.Exception
 import Control.Monad
 import Data.String.Interpolate
-import Safe
 import System.Directory
 import System.Environment
 import System.Exit
@@ -15,6 +14,9 @@ import System.FilePath
 import System.IO
 import System.Posix.Files
 import System.Process (system, readProcessWithExitCode)
+import Data.List
+import System.IO.Silently
+import System.SetEnv
 
 
 run :: [String] -> IO ()
@@ -38,6 +40,7 @@ getCabalFile = do
     case fs of
         [f] -> return f
         [] -> throwIO $ ErrorCall "no cabal file found"
+        fs -> throwIO $ ErrorCall ("found multiple cabal files: " ++ unwords fs)
 
 createDefaultNixFileIfMissing :: String -> IO FilePath
 createDefaultNixFileIfMissing packageName = do
@@ -123,9 +126,10 @@ nixBuild cabalFile nhcFile = do
 performCommand :: [String] -> IO ()
 performCommand command = do
     stopHdevtoolsIfNecessary
-    (ec, out, err) <- readProcessWithExitCode "./result/bin/load-env-nhc-build" []
-        (unwords command)
-    putStrLn (initSafe $ drop (length "env-nhc-build loaded\n") out)
+    unsetEnv "_PATH"
+    ("", (ec, out, err)) <- capture $ readProcessWithExitCode "./result/bin/load-env-nhc-build" []
+      (unwords command)
+    putStrLn out
     hPutStrLn stderr err
 
 -- | hdevtools starts a background daemon in the environment it is first
