@@ -5,6 +5,8 @@ module RunSpec where
 
 import Test.Hspec
 
+import Control.Monad
+import Control.Concurrent
 import Control.Exception
 import System.Directory
 import System.IO.Silently
@@ -53,6 +55,14 @@ spec = do
       ec1 `shouldBe` ExitSuccess
       ec2 <- run $ words "false"
       ec2 `shouldBe` ExitFailure 1
+
+    it "streams stdout and stderr of the child process" $ insideBifunctors $ do
+      (output, _) <- capture $ do
+        _ <- forkIO $ void $ run $ words "echo first" --  ; sleep 1"
+        putStrLn "second"
+        threadDelay 1200000
+      filter (`elem` ["first", "second"]) (lines output)
+        `shouldBe` ["first", "second"]
 
     it "executes cabal build" $ insideBifunctors $ do
       _ <- capture $ run $ words "cabal build"

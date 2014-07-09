@@ -13,7 +13,6 @@ import System.FilePath
 import System.IO
 import System.Posix.Files
 import System.Process (system, readProcessWithExitCode)
-import System.IO.Silently
 import System.SetEnv
 
 
@@ -125,11 +124,7 @@ performCommand :: [String] -> IO ExitCode
 performCommand command = do
     stopHdevtoolsIfNecessary
     unsetEnv "_PATH"
-    ("", (ec, out, err)) <- capture $ readProcessWithExitCode "./result/bin/load-env-nhc-build" []
-      (unwords command)
-    putStrLn out
-    hPutStrLn stderr err
-    return ec
+    system [i|echo #{unwords command} | ./result/bin/load-env-nhc-build|]
 
 -- | hdevtools starts a background daemon in the environment it is first
 -- invocated in. If 'result' is newer than the hdevtools socket, we have
