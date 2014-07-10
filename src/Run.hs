@@ -28,7 +28,7 @@ run command handles = do
     -- creating our own environment script
     envScript <- createEnvScript buildResult
     -- entering the environment and performing the given command
-    performCommand envScript command handles
+    performCommand cabalFile envScript command handles
 
 
 getCabalFile :: IO FilePath
@@ -136,10 +136,11 @@ createEnvScript buildResult = do
     (++ " -c \"$1\"\n")
 
 -- | Performs the command inside the environment.
-performCommand :: FilePath -> [String] -> (Handle, Handle) -> IO ExitCode
-performCommand envScript command (stdin, stdout) = do
+performCommand :: FilePath -> FilePath -> [String] -> (Handle, Handle) -> IO ExitCode
+performCommand cabalFile envScript command (stdin, stdout) = do
     stopHdevtoolsIfNecessary
     unsetEnv "_PATH"
+    setEnv "NHC_CABAL_FILE" =<< canonicalizePath cabalFile
     (Nothing, Nothing, Nothing, process) <- createProcess $ (proc envScript [unwords command]) {
       std_in = UseHandle stdin,
       std_out = UseHandle stdout

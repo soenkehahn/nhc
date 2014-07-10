@@ -5,6 +5,7 @@ module RunSpec where
 
 import Test.Hspec
 
+import Safe
 import Control.Concurrent.Thread
 import Control.Monad
 import Control.Applicative
@@ -89,6 +90,11 @@ spec = do
       hClose writeEndStdin
       output <- result =<< wait
       lines output `shouldContain` ["(0,2)"]
+
+    it "sets an nhc-specific environment variable (for changing the prompt of invoked shells)" $ insideBifunctors $ do
+      cabalFile <- capture_ $ run' (words "echo $NHC_CABAL_FILE")
+      fmap takeFileName (lastMay (lines cabalFile))
+        `shouldBe` Just "bifunctors-example.cabal"
 
     it "executes cabal build" $ insideBifunctors $ do
       _ <- capture $ run' $ words "cabal build"
