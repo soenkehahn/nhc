@@ -5,7 +5,7 @@ module RunSpec where
 
 import Test.Hspec
 
-import Control.Concurrent
+import Control.Concurrent.Thread
 import Control.Monad
 import Control.Applicative
 import Control.Exception
@@ -78,6 +78,17 @@ spec = do
       hPutStrLn writeEndStdin ""
       l2 <- hGetLine readEndStdout
       l2 `shouldBe` "ending"
+
+    it "executes ghci" $ insideBifunctors $ do
+      (readEndStdin, writeEndStdin) <- createPipeHandles
+      wait :: IO (Result String) <- snd <$> (forkIO $ capture_ $ run (words "ghci") (readEndStdin, stdout))
+      mapM_ (hPutStrLn writeEndStdin) $
+        "import Data.Bifunctor" :
+        "bimap pred succ (1, 1)" :
+        []
+      hClose writeEndStdin
+      output <- result =<< wait
+      lines output `shouldContain` ["(0,2)"]
 
     it "executes cabal build" $ insideBifunctors $ do
       _ <- capture $ run' $ words "cabal build"

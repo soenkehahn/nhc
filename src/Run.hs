@@ -2,6 +2,7 @@
 
 module Run where
 
+import Data.Char
 import System.Process
 import Control.Applicative
 import Control.Arrow
@@ -23,9 +24,11 @@ run command handles = do
     defaultFile <- createDefaultNixFileIfMissing (takeBaseName cabalFile)
     nhcFile <- createNhcNixFileIfMissing defaultFile
     -- building the environment
-    nixBuild cabalFile nhcFile
+    buildResult <- nixBuild cabalFile nhcFile
+    -- creating our own environment script
+    envScript <- createEnvScript buildResult
     -- entering the environment and performing the given command
-    performCommand command handles
+    performCommand envScript command handles
 
 
 getCabalFile :: IO FilePath
@@ -102,7 +105,7 @@ createNhcNixFileIfMissing defaultFile = do
 -- that sets up an environment for building the cabal package.
 -- Omits any action when 'result' already exists and the cabal file is
 -- not newer than 'result'.
-nixBuild :: FilePath -> FilePath -> IO ()
+nixBuild :: FilePath -> FilePath -> IO FilePath
 nixBuild cabalFile nhcFile = do
     resultExists <- fileExist "result"
     if not resultExists then run else do
@@ -112,6 +115,7 @@ nixBuild cabalFile nhcFile = do
         when (cabalModTime >= resultModTime ||
               nhcModTime >= resultModTime)
             run
+    return "./result"
   where
     run :: IO ()
     run = do
@@ -119,12 +123,24 @@ nixBuild cabalFile nhcFile = do
         ExitSuccess <- system "nix-build nhc.nix -j4"
         return ()
 
+createEnvScript :: FilePath -> IO FilePath
+createEnvScript buildResult = do
+  contents <- readFile (buildResult </> "bin/load-env-nhc-build")
+  writeFile "nhc-env.sh" (fiddleInArgument contents)
+  ExitSuccess <- system "chmod +x nhc-env.sh"
+  return "./nhc-env.sh"
+ where
+  fiddleInArgument :: String -> String
+  fiddleInArgument =
+    reverse >>> dropWhile isSpace >>> reverse >>>
+    (++ " -c \"$1\"\n")
+
 -- | Performs the command inside the environment.
-performCommand :: [String] -> (Handle, Handle) -> IO ExitCode
-performCommand command (stdin, stdout) = do
+performCommand :: FilePath -> [String] -> (Handle, Handle) -> IO ExitCode
+performCommand envScript command (stdin, stdout) = do
     stopHdevtoolsIfNecessary
     unsetEnv "_PATH"
-    (Nothing, Nothing, Nothing, process) <- createProcess $ (shell [i|echo #{unwords command} | ./result/bin/load-env-nhc-build|]) {
+    (Nothing, Nothing, Nothing, process) <- createProcess $ (proc envScript [unwords command]) {
       std_in = UseHandle stdin,
       std_out = UseHandle stdout
       -- delegate_ctlc = True -- only in process 1.2.0.0 :(
