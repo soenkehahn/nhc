@@ -2,6 +2,7 @@
 
 module Run where
 
+import System.Process
 import Control.Applicative
 import Control.Arrow
 import Control.Exception
@@ -12,12 +13,11 @@ import System.Exit
 import System.FilePath
 import System.IO
 import System.Posix.Files
-import System.Process (system, readProcessWithExitCode)
 import System.SetEnv
 
 
-run :: [String] -> IO ExitCode
-run command = do
+run :: [String] -> (Handle, Handle) -> IO ExitCode
+run command handles = do
     -- prerequisites
     cabalFile <- getCabalFile
     defaultFile <- createDefaultNixFileIfMissing (takeBaseName cabalFile)
@@ -25,7 +25,7 @@ run command = do
     -- building the environment
     nixBuild cabalFile nhcFile
     -- entering the environment and performing the given command
-    performCommand command
+    performCommand command handles
 
 
 getCabalFile :: IO FilePath
@@ -120,11 +120,16 @@ nixBuild cabalFile nhcFile = do
         return ()
 
 -- | Performs the command inside the environment.
-performCommand :: [String] -> IO ExitCode
-performCommand command = do
+performCommand :: [String] -> (Handle, Handle) -> IO ExitCode
+performCommand command (stdin, stdout) = do
     stopHdevtoolsIfNecessary
     unsetEnv "_PATH"
-    system [i|echo #{unwords command} | ./result/bin/load-env-nhc-build|]
+    (Nothing, Nothing, Nothing, process) <- createProcess $ (shell [i|echo #{unwords command} | ./result/bin/load-env-nhc-build|]) {
+      std_in = UseHandle stdin,
+      std_out = UseHandle stdout
+      -- delegate_ctlc = True -- only in process 1.2.0.0 :(
+     }
+    waitForProcess process
 
 -- | hdevtools starts a background daemon in the environment it is first
 -- invocated in. If 'result' is newer than the hdevtools socket, we have
