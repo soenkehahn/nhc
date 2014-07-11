@@ -6,6 +6,7 @@ module RunSpec where
 import Test.Hspec
 
 import Safe
+import Data.List
 import Control.Concurrent.Thread
 import Control.Monad
 import Control.Applicative
@@ -95,6 +96,10 @@ spec = do
       cabalFile <- capture_ $ run' (words "echo $NHC_CABAL_FILE")
       fmap takeFileName (lastMay (lines cabalFile))
         `shouldBe` Just "bifunctors-example.cabal"
+
+    it "provides a decent error message when the command cannot be found" $ do
+      output <- hCapture_ [stderr] $ run' $ words "does_not_exist"
+      output `shouldSatisfy` (isInfixOf "does_not_exist: command not found")
 
     it "executes cabal build" $ insideBifunctors $ do
       _ <- capture $ run' $ words "cabal build"
