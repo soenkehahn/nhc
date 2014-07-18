@@ -19,18 +19,22 @@ import           NhcOptions
 import           Utils
 
 
+nhcDir :: FilePath
+nhcDir = ".nhc"
+
 run :: [String] -> (Handle, Handle) -> IO ExitCode
 run args handles = withNhcOptions args $ \ NhcOptions command -> do
     -- prerequisites
+    createDirectoryIfMissing True nhcDir
     cabalFile <- getCabalFile
     defaultFile <- createDefaultNixFileIfMissing (takeBaseName cabalFile)
     nhcFile <- createNhcNixFileIfMissing defaultFile
     -- building the environment
-    buildResult <- nixBuild cabalFile nhcFile
+    resultLink <- nixBuild cabalFile nhcFile
     -- creating our own environment script
-    envScript <- createEnvScript buildResult
+    envScript <- createEnvScript resultLink
     -- entering the environment and performing the given command
-    performCommand cabalFile envScript command handles
+    performCommand cabalFile resultLink envScript command handles
 
 
 getCabalFile :: IO FilePath
@@ -46,16 +50,17 @@ getCabalFile = do
 
 createDefaultNixFileIfMissing :: String -> IO FilePath
 createDefaultNixFileIfMissing packageName = do
-    exists <- fileExist "default.nix"
+    let file = nhcDir </> "default.nix"
+    exists <- fileExist file
     when (not exists) $
-        writeFile "default.nix" $ normalizeLines [i|
+        writeFile file $ normalizeLines [i|
             { pkgs ? import <nixpkgs> {},
-              src ? ./. } :
+              src ? ../. } :
             {
                 build = pkgs.haskellPackages.buildLocalCabal src "#{packageName}";
             }
           |]
-    return "./default.nix"
+    return file
 
 -- | Creates a file 'nhc.nix' that is used to build the environment for
 -- checking the haskell sources. If the file already exists it is left
@@ -63,9 +68,10 @@ createDefaultNixFileIfMissing packageName = do
 -- profiling.
 createNhcNixFileIfMissing :: FilePath -> IO FilePath
 createNhcNixFileIfMissing defaultFile = do
-    exists <- doesFileExist "nhc.nix"
+    let file = nhcDir </> "nhc.nix"
+    exists <- doesFileExist file
     when (not exists) $ do
-        writeFile "nhc.nix" $ normalizeLines [i|
+        writeFile file $ normalizeLines [i|
 
             let
 
@@ -84,7 +90,7 @@ createNhcNixFileIfMissing defaultFile = do
 
                 hsEnv = pkgs.haskellPackages.ghcWithPackages
                     (hsPkgs :
-                     let package = (hsPkgs.callPackage #{defaultFile} { inherit pkgs; }).build;
+                     let package = (hsPkgs.callPackage ./#{takeFileName defaultFile} { inherit pkgs; }).build;
                      in
                         [ (hsPkgs.buildLocalCabal git_hdevtools_src "hdevtools") ] ++
                         package.buildInputs ++
@@ -103,7 +109,7 @@ createNhcNixFileIfMissing defaultFile = do
                     '';
                 }
             |]
-    return "nhc.nix"
+    return file
 
 -- | Creates a symlink 'result' pointing to a script in the nix store
 -- that sets up an environment for building the cabal package.
@@ -111,28 +117,32 @@ createNhcNixFileIfMissing defaultFile = do
 -- not newer than 'result'.
 nixBuild :: FilePath -> FilePath -> IO FilePath
 nixBuild cabalFile nhcFile = do
-    resultExists <- fileExist "result"
+    resultExists <- fileExist link
     if not resultExists then run else do
         cabalModTime <- modificationTime <$> getSymbolicLinkStatus cabalFile
         nhcModTime <- modificationTime <$> getSymbolicLinkStatus nhcFile
-        resultModTime <- modificationTime <$> getSymbolicLinkStatus "result"
+        resultModTime <- modificationTime <$> getSymbolicLinkStatus link
         when (cabalModTime >= resultModTime ||
               nhcModTime >= resultModTime)
             run
-    return "./result"
+    return link
   where
+    link = nhcDir </> "result"
+
     run :: IO ()
     run = do
         hPutStrLn stderr "building..."
-        ExitSuccess <- system "nix-build nhc.nix -j4"
+        ExitSuccess <- system [i|nix-build #{nhcFile} -j4|]
+        renameFile "./result" link
         return ()
 
 createEnvScript :: FilePath -> IO FilePath
 createEnvScript buildResult = do
+  let file = nhcDir </> "nhc-env.sh"
   contents <- readFile (buildResult </> "bin/load-env-nhc-build")
-  writeFile "nhc-env.sh" (fiddleInArgument contents)
-  ExitSuccess <- system "chmod +x nhc-env.sh"
-  return "./nhc-env.sh"
+  writeFile file (fiddleInArgument contents)
+  ExitSuccess <- system [i|chmod +x #{file}|]
+  return file
  where
   fiddleInArgument :: String -> String
   fiddleInArgument script = unlines $
@@ -147,9 +157,9 @@ createEnvScript buildResult = do
 
 
 -- | Performs the command inside the environment.
-performCommand :: FilePath -> FilePath -> [String] -> (Handle, Handle) -> IO ExitCode
-performCommand cabalFile envScript command (stdin, stdout) = do
-    stopHdevtoolsIfNecessary
+performCommand :: FilePath -> FilePath -> FilePath -> [String] -> (Handle, Handle) -> IO ExitCode
+performCommand cabalFile resultLink envScript command (stdin, stdout) = do
+    stopHdevtoolsIfNecessary resultLink envScript
     unsetEnv "_PATH"
     setEnv "NHC_CABAL_FILE" =<< canonicalizePath cabalFile
     (Nothing, Nothing, Nothing, process) <- createProcess $ (proc envScript [unwords command]) {
@@ -163,14 +173,14 @@ performCommand cabalFile envScript command (stdin, stdout) = do
 -- invocated in. If 'result' is newer than the hdevtools socket, we have
 -- to shut down the daemon. This will cause a new startup in the new
 -- environment.
-stopHdevtoolsIfNecessary :: IO ()
-stopHdevtoolsIfNecessary = do
+stopHdevtoolsIfNecessary :: FilePath -> FilePath -> IO ()
+stopHdevtoolsIfNecessary resultLink envScript = do
     socketExists <- fileExist ".hdevtools.sock"
     when (socketExists) $ do
         hdevSocketModTime <- modificationTime <$> getSymbolicLinkStatus ".hdevtools.sock"
-        resultModTime <- modificationTime <$> getSymbolicLinkStatus "result"
+        resultModTime <- modificationTime <$> getSymbolicLinkStatus resultLink
         when (resultModTime >= hdevSocketModTime) $ do
-            (_ec, out, err) <- readProcessWithExitCode "./result/bin/load-env-nhc-build" []
+            (_ec, out, err) <- readProcessWithExitCode envScript []
                 [i|hdevtools --stop-server|]
             putStrLn out
             hPutStrLn stderr err

@@ -117,3 +117,9 @@ spec = do
       (result, exitCode) <- hCapture [stderr] $ run' $ words "--does-not-exist"
       exitCode `shouldSatisfy` (/= ExitSuccess)
       lines result `shouldContain` ["Unknown flag --does-not-exist"]
+
+    it "creates no non-hidden files or directories" $ insideBifunctors $ do
+      before <- getDirectoryContents "."
+      _ <- run' $ ["true"]
+      after <- getDirectoryContents "."
+      after \\ before `shouldBe` [".nhc"]
