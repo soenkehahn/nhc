@@ -1,26 +1,26 @@
-{-# LANGUAGE ScopedTypeVariables, OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, ScopedTypeVariables #-}
 
 module RunSpec where
 
 
-import Test.Hspec
+import           Test.Hspec
 
-import Safe
-import Data.List
-import Control.Concurrent.Thread
-import Control.Monad
-import Control.Applicative
-import Control.Exception
-import System.Directory
-import System.IO.Silently
-import System.IO.Temp
-import System.Process
-import System.FilePath
-import System.Exit
-import System.IO
-import System.Posix.IO
+import           Control.Applicative
+import           Control.Concurrent.Thread
+import           Control.Exception
+import           Control.Monad
+import           Data.List
+import           Safe
+import           System.Directory
+import           System.Exit
+import           System.FilePath
+import           System.IO
+import           System.IO.Silently
+import           System.IO.Temp
+import           System.Posix.IO
+import           System.Process
 
-import Run
+import           Run
 
 
 main :: IO ()
@@ -97,9 +97,13 @@ spec = do
       fmap takeFileName (lastMay (lines cabalFile))
         `shouldBe` Just "bifunctors-example.cabal"
 
-    it "provides a decent error message when the command cannot be found" $ do
+    it "provides a decent error message when the command cannot be found" $ insideBifunctors $ do
       output <- hCapture_ [stderr] $ run' $ words "does_not_exist"
-      output `shouldSatisfy` (isInfixOf "does_not_exist: command not found")
+      output `shouldSatisfy` ("does_not_exist: command not found" `isInfixOf`)
+
+    it "has a --help command line option" $ insideBifunctors $ do
+      output <- capture_ $ run' $ words "--help"
+      mapM_ (\ word -> (word `shouldSatisfy` (`isInfixOf` output))) ["execute", "COMMAND", "nix", "environment", "cabal", "http"]
 
     it "executes cabal build" $ insideBifunctors $ do
       _ <- capture $ run' $ words "cabal build"

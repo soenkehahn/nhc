@@ -2,7 +2,7 @@
 module Main where
 
 
-import Data.Bifunctor
+import           Data.Bifunctor
 
 
 main :: IO ()

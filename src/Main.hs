@@ -2,11 +2,11 @@
 module Main where
 
 
-import System.Environment
-import System.Exit
-import System.IO
+import           System.Environment
+import           System.Exit
+import           System.IO
 
-import Run
+import           Run
 
 
 main :: IO ()

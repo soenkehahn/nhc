@@ -1,24 +1,27 @@
-{-# LANGUAGE ScopedTypeVariables, QuasiQuotes #-}
+{-# LANGUAGE QuasiQuotes, ScopedTypeVariables #-}
 
 module Run where
 
-import Data.Char
-import System.Process
-import Control.Applicative
-import Control.Arrow
-import Control.Exception
-import Control.Monad
-import Data.String.Interpolate
-import System.Directory
-import System.Exit
-import System.FilePath
-import System.IO
-import System.Posix.Files
-import System.SetEnv
+import           Control.Applicative
+import           Control.Arrow
+import           Control.Exception
+import           Control.Monad
+import           Data.Char
+import           Data.String.Interpolate
+import           System.Directory
+import           System.Exit
+import           System.FilePath
+import           System.IO
+import           System.Posix.Files
+import           System.Process
+import           System.SetEnv
+
+import           NhcOptions
+import           Utils
 
 
 run :: [String] -> (Handle, Handle) -> IO ExitCode
-run command handles = do
+run args handles = withNhcOptions args $ \ NhcOptions command -> do
     -- prerequisites
     cabalFile <- getCabalFile
     defaultFile <- createDefaultNixFileIfMissing (takeBaseName cabalFile)
@@ -163,28 +166,3 @@ stopHdevtoolsIfNecessary = do
                 [i|hdevtools --stop-server|]
             putStrLn out
             hPutStrLn stderr err
-
-
--- utils
-
--- | Normalizes lines as the nix lines literals do.
---
--- >>> normalizeLines " \n \n  foo\n\n  bar\n    baz\n \n"
--- "foo\n\nbar\n  baz\n"
-normalizeLines :: String -> String
-normalizeLines =
-    lines >>>
-    -- convert whitespace lines to empty lines
-    map (\ line -> if all (== ' ') line then "" else line) >>>
-    -- strip empty lines at start and end
-    dropWhile null >>> reverse >>> dropWhile null >>> reverse >>>
-    -- strip indentation
-    stripIndentation >>>
-    unlines
-  where
-    stripIndentation :: [String] -> [String]
-    stripIndentation ls =
-        let indent = minimum $
-                map (length . takeWhile (== ' ')) $
-                filter (not . null) ls
-        in map (drop indent) ls
