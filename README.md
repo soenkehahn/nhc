@@ -14,11 +14,11 @@ $ nhc hdevtools check src/Main.hs
 Interactive commands are also allowed:
 
 ```
-nhc ghci
+$ nhc ghci
 ```
 
 ```
-nhc zsh
+$ nhc zsh
 ```
 
 `nhc` provides basic development tools (`ghc`, `ghc-pkg`, `cabal`), but also
