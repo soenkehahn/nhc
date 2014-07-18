@@ -112,3 +112,8 @@ spec = do
     it "executes cabal test" $ insideBifunctors $ do
       _ <- capture $ run' $ words "cabal test"
       return ()
+
+    it "complains properly about unknown command line flags (to nhc)" $ insideBifunctors $ do
+      (result, exitCode) <- hCapture [stderr] $ run' $ words "--does-not-exist"
+      exitCode `shouldSatisfy` (/= ExitSuccess)
+      lines result `shouldContain` ["Unknown flag --does-not-exist"]
