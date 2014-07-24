@@ -135,3 +135,18 @@ spec = do
       insideBifunctors $ do
         output <- capture_ $ run' $ ["runhaskell", "PrintArgs.hs", "foo bar"]
         lines output `shouldContain` ["[\"foo bar\"]"]
+
+    it "allows profiling" $ insideBifunctors $ do
+      run' (words "--prof ghc -prof Main.hs") `shouldReturn` ExitSuccess
+      run' (words "./Main +RTS -p") `shouldReturn` ExitSuccess
+
+    it "does not allow profiling without --prof" $ insideBifunctors $ do
+      exitCode <- run' (words "ghc -prof Main.hs")
+      exitCode `shouldSatisfy` (/= ExitSuccess)
+
+    it "does rebuild the environment when profiling flags toggles" $ insideBifunctors $ do
+      exitCode <- run' (words "ghc -prof Main.hs")
+      exitCode `shouldSatisfy` (/= ExitSuccess)
+      run' (words "--prof ghc -prof Main.hs") `shouldReturn` ExitSuccess
+      exitCode <- run' (words "ghc -prof Main.hs")
+      exitCode `shouldSatisfy` (/= ExitSuccess)

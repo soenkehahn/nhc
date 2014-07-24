@@ -14,11 +14,17 @@ import           System.IO
 import           Utils
 
 
-data NhcOptions = NhcOptions
-  deriving Show
+data NhcOptions = NhcOptions {
+    profiling :: Bool
+  }
+    deriving Show
 
 instance Options NhcOptions where
-  defineOptions = pure NhcOptions
+  defineOptions = NhcOptions <$>
+    defineOption optionType_bool (\ o -> o{
+      optionLongFlags = ["prof"],
+      optionShortFlags = ['p']
+     })
 
 withNhcOptions :: [String] -> (NhcOptions -> [String] -> IO ExitCode) -> IO ExitCode
 withNhcOptions args action = do

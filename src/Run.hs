@@ -23,12 +23,12 @@ nhcDir :: FilePath
 nhcDir = ".nhc"
 
 run :: [String] -> (Handle, Handle) -> IO ExitCode
-run args handles = withNhcOptions args $ \ NhcOptions (command : args) -> do
+run args handles = withNhcOptions args $ \ nhcOptions (command : args) -> do
     -- prerequisites
     createDirectoryIfMissing True nhcDir
     cabalFile <- getCabalFile
     defaultFile <- createDefaultNixFileIfMissing (takeBaseName cabalFile)
-    nhcFile <- createNhcNixFileIfMissing defaultFile
+    nhcFile <- createNhcNixFileIfMissing nhcOptions defaultFile
     -- building the environment
     resultLink <- nixBuild cabalFile nhcFile
     -- creating our own environment script
@@ -66,20 +66,22 @@ createDefaultNixFileIfMissing packageName = do
 -- checking the haskell sources. If the file already exists it is left
 -- untouched. This allows for modifying the build environment, e.g. for
 -- profiling.
-createNhcNixFileIfMissing :: FilePath -> IO FilePath
-createNhcNixFileIfMissing defaultFile = do
+createNhcNixFileIfMissing :: NhcOptions -> FilePath -> IO FilePath
+createNhcNixFileIfMissing options defaultFile = do
     let file = nhcDir </> "nhc.nix"
     exists <- doesFileExist file
-    when (not exists) $ do
+    hadProfiling <- doesFileExist ".nhc/prof"
+    when (profiling options) $
+      writeFile ".nhc/prof" ""
+    when (not exists || hadProfiling /= profiling options) $ do
         writeFile file $ normalizeLines [i|
 
             let
 
-                pkgs = import <nixpkgs> { config.allowUnfree = true; };
-                # this hack will be needed to get profiling to work:
-                # pkgs = originalPkgs // {
-                #     haskellPackages = originalPkgs.haskellPackages_ghc763;
-                # };
+                pkgs = import <nixpkgs> {
+                    config.allowUnfree = true;
+                    config.cabal.libraryProfiling = #{if profiling options then "true" else "false"};
+                };
 
                 # https://github.com/schell/hdevtools/commit/9e34f7dd20fcf3654a57fbf414be4962cc279854
                 git_hdevtools_src = pkgs.fetchgit {

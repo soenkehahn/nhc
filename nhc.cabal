@@ -49,6 +49,5 @@ test-suite spec
 
     hspec,
     temporary,
-    QuickCheck,
     threads,
     safe
