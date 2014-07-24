@@ -124,6 +124,13 @@ spec = do
       after <- getDirectoryContents "."
       after \\ before `shouldBe` [".nhc"]
 
+    it "rebuilds the environment to include libraries added to the cabal file" $ insideBifunctors $ do
+      _ <- run' $ words "cabal build"
+      _ <- system "cp added-dependency/* ."
+      exitCode <- run' $ words "cabal build"
+      exitCode `shouldBe` ExitSuccess
+      return ()
+
     it "passes argument that contain spaces correctly to the invoked command" $
       insideBifunctors $ do
         output <- capture_ $ run' $ ["runhaskell", "PrintArgs.hs", "foo bar"]
