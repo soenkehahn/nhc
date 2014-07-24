@@ -4,6 +4,7 @@ module RunSpec where
 
 
 import           Test.Hspec
+import           Test.QuickCheck           hiding (Result)
 
 import           Control.Applicative
 import           Control.Concurrent.Thread
@@ -27,10 +28,10 @@ main :: IO ()
 main = hspec spec
 
 -- | executes the given function inside the safe example project
-insideBifunctors :: IO () -> IO ()
+insideBifunctors :: IO a -> IO a
 insideBifunctors = insideExample "bifunctors"
 
-insideExample :: String -> IO () -> IO ()
+insideExample :: String -> IO a -> IO a
 insideExample name action = withSystemTempDirectory "nhc-test-suite" $
     \ tmpDir -> bracket (start tmpDir) end (const action)
   where
@@ -123,3 +124,8 @@ spec = do
       _ <- run' $ ["true"]
       after <- getDirectoryContents "."
       after \\ before `shouldBe` [".nhc"]
+
+    it "passes argument that contain spaces correctly to the invoked command" $
+      insideBifunctors $ do
+        output <- capture_ $ run' $ ["runhaskell", "PrintArgs.hs", "foo bar"]
+        lines output `shouldContain` ["[\"foo bar\"]"]
