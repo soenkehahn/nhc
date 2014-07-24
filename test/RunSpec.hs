@@ -4,7 +4,6 @@ module RunSpec where
 
 
 import           Test.Hspec
-import           Test.QuickCheck           hiding (Result)
 
 import           Control.Applicative
 import           Control.Concurrent.Thread
