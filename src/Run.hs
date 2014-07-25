@@ -71,9 +71,9 @@ createNhcNixFileIfMissing :: NhcOptions -> FilePath -> IO FilePath
 createNhcNixFileIfMissing options defaultFile = do
     let file = nhcDir </> "nhc.nix"
     exists <- doesFileExist file
-    hadProfiling <- doesFileExist ".nhc/prof"
+    hadProfiling <- doesFileExist (nhcDir </> "prof")
     when (profiling options) $
-      writeFile ".nhc/prof" ""
+      writeFile (nhcDir </> "prof") ""
     when (not exists || hadProfiling /= profiling options) $ do
         writeFile file $ normalizeLines [i|
 
@@ -158,16 +158,16 @@ performCommand :: FilePath -> FilePath -> FilePath -> String -> [String] -> (Han
 performCommand cabalFile resultLink envSetup command args (stdin, stdout) = do
     envSetupContents <- readFile envSetup
     hdevStopLine <- stopHdevtoolsIfNecessary resultLink
-    writeFile ".nhc/tmp_command.sh" $ unlines $
+    writeFile (nhcDir </> "tmp_command.sh") $ unlines $
       envSetupContents :
       fromMaybe "" hdevStopLine :
       unwords (command : map wrapBashArg args) :
       []
-    getPermissions ".nhc/tmp_command.sh" >>= \ p ->
-      setPermissions ".nhc/tmp_command.sh" (setOwnerExecutable True p)
+    getPermissions (nhcDir </> "tmp_command.sh") >>= \ p ->
+      setPermissions (nhcDir </> "tmp_command.sh") (setOwnerExecutable True p)
     unsetEnv "_PATH"
     setEnv "NHC_CABAL_FILE" =<< canonicalizePath cabalFile
-    (Nothing, Nothing, Nothing, process) <- createProcess $ (proc ".nhc/tmp_command.sh" []) {
+    (Nothing, Nothing, Nothing, process) <- createProcess $ (proc (nhcDir </> "tmp_command.sh") []) {
       std_in = UseHandle stdin,
       std_out = UseHandle stdout
       -- delegate_ctlc = True -- only in process 1.2.0.0 :(
