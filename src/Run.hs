@@ -135,8 +135,7 @@ nixBuild cabalFile nhcFile = do
     run :: IO ()
     run = do
         hPutStrLn stderr "building..."
-        ExitSuccess <- system [i|nix-build #{nhcFile} -j4|]
-        renameFile "./result" link
+        ExitSuccess <- system [i|nix-build #{nhcFile} -j4 -o #{link}|]
         return ()
 
 createEnvSetup :: FilePath -> IO FilePath
