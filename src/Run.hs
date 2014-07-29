@@ -22,8 +22,15 @@ import           Utils
 nhcDir :: FilePath
 nhcDir = ".nhc"
 
+-- | Allows to use 'exitWith' inside the given action and
+-- have the used 'ExitCode' being returned and not thrown.
+handleExitCodes :: IO ExitCode -> IO ExitCode
+handleExitCodes = handle $ \ (exitCode :: ExitCode) -> return exitCode
+
 run :: [String] -> (Handle, Handle) -> IO ExitCode
-run args handles = withNhcOptions args $ \ nhcOptions (command : args) -> do
+run args handles =
+  handleExitCodes $
+  withNhcOptions args $ \ nhcOptions (command : args) -> do
     -- prerequisites
     createDirectoryIfMissing True nhcDir
     cabalFile <- getCabalFile
@@ -135,7 +142,10 @@ nixBuild cabalFile nhcFile = do
     run :: IO ()
     run = do
         hPutStrLn stderr "building..."
-        ExitSuccess <- system [i|nix-build #{nhcFile} -j4 -o #{link}|]
+        exitCode <- system [i|nix-build #{nhcFile} -j4 -o #{link}|]
+        when (exitCode /= ExitSuccess) $ do
+          hPutStrLn stderr "error executing nix-build to build environment"
+          exitWith exitCode
         return ()
 
 createEnvSetup :: FilePath -> IO FilePath
