@@ -9,7 +9,7 @@ category:            Development
 build-type:          Simple
 cabal-version:       >=1.10
 
-executable safe-example
+executable bifunctors-example
   main-is: Main.hs
   build-depends:       base, bifunctors
   default-language:    Haskell2010

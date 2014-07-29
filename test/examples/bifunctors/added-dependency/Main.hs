@@ -2,7 +2,7 @@
 module Main where
 
 
-import           Control.Lens
+import           Safe
 import           Data.Bifunctor
 
 
