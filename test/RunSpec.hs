@@ -150,3 +150,9 @@ spec = do
       run' (words "--prof ghc -prof Main.hs") `shouldReturn` ExitSuccess
       exitCode <- run' (words "ghc -prof Main.hs")
       exitCode `shouldSatisfy` (/= ExitSuccess)
+
+    it "allows to use a custom 'default.nix' file" $ insideBifunctors $ do
+      writeFile "custom.nix" "abort \"foobar\""
+      output <- hCapture_ [stderr] $ run' $ words "--custom-default=custom.nix echo huhu"
+      output `shouldSatisfy` ("foobar" `isInfixOf`)
+      output `shouldSatisfy` ("error" `isInfixOf`)

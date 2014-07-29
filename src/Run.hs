@@ -34,7 +34,7 @@ run args handles =
     -- prerequisites
     createDirectoryIfMissing True nhcDir
     cabalFile <- getCabalFile
-    defaultFile <- createDefaultNixFileIfMissing (takeBaseName cabalFile)
+    defaultFile <- createDefaultNixFileIfMissing nhcOptions (takeBaseName cabalFile)
     nhcFile <- createNhcNixFileIfMissing nhcOptions defaultFile
     -- building the environment
     resultLink <- nixBuild cabalFile nhcFile
@@ -55,9 +55,9 @@ getCabalFile = do
         [] -> throwIO $ ErrorCall "no cabal file found"
         fs -> throwIO $ ErrorCall ("found multiple cabal files: " ++ unwords fs)
 
-createDefaultNixFileIfMissing :: String -> IO FilePath
-createDefaultNixFileIfMissing packageName = do
-    let file = nhcDir </> "default.nix"
+createDefaultNixFileIfMissing :: NhcOptions -> String -> IO FilePath
+createDefaultNixFileIfMissing options packageName = do
+    let file = fromMaybe (nhcDir </> "default.nix") (customDefaultFile options)
     exists <- fileExist file
     when (not exists) $
         writeFile file $ normalizeLines [i|
@@ -100,7 +100,7 @@ createNhcNixFileIfMissing options defaultFile = do
 
                 hsEnv = pkgs.haskellPackages.ghcWithPackages
                     (hsPkgs :
-                     let package = (hsPkgs.callPackage ./#{takeFileName defaultFile} { inherit pkgs; }).build;
+                     let package = (hsPkgs.callPackage #{".." </> defaultFile} { inherit pkgs; }).build;
                      in
                         [ (hsPkgs.buildLocalCabal git_hdevtools_src "hdevtools") ] ++
                         package.buildInputs ++

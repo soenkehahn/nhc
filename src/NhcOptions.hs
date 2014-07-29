@@ -15,7 +15,8 @@ import           Utils
 
 
 data NhcOptions = NhcOptions {
-    profiling :: Bool
+    profiling :: Bool,
+    customDefaultFile :: Maybe FilePath
   }
     deriving Show
 
@@ -24,7 +25,11 @@ instance Options NhcOptions where
     defineOption optionType_bool (\ o -> o{
       optionLongFlags = ["prof"],
       optionShortFlags = ['p']
-     })
+     }) <*>
+    simpleOption "custom-default" Nothing
+      "Custom default.nix file to be used. \
+      \(Has to be used with an equal sign, \
+      \i.e '--custom-default=custom.nix'.)"
 
 withNhcOptions :: [String] -> (NhcOptions -> [String] -> IO ExitCode) -> IO ExitCode
 withNhcOptions args action = do
