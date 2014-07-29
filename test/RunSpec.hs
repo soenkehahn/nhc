@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedStrings, QuasiQuotes, ScopedTypeVariables #-}
 
 module RunSpec where
 
@@ -10,6 +10,7 @@ import           Control.Concurrent.Thread
 import           Control.Exception
 import           Control.Monad
 import           Data.List
+import           Data.String.Interpolate
 import           Safe
 import           System.Directory
 import           System.Exit
@@ -21,6 +22,7 @@ import           System.Posix.IO
 import           System.Process
 
 import           Run
+import           Utils
 
 
 main :: IO ()
@@ -152,7 +154,11 @@ spec = do
       exitCode `shouldSatisfy` (/= ExitSuccess)
 
     it "allows to use a custom 'default.nix' file" $ insideBifunctors $ do
-      writeFile "custom.nix" "abort \"foobar\""
-      output <- hCapture_ [stderr] $ run' $ words "--custom-default=custom.nix echo huhu"
-      output `shouldSatisfy` ("foobar" `isInfixOf`)
-      output `shouldSatisfy` ("error" `isInfixOf`)
+      writeFile "custom.nix" $ normalizeLines [i|
+          { pkgs ? import <nixpkgs> {},
+            src ? ./.
+          }:
+          pkgs.haskellPackages.buildLocalCabal src "bifunctors-example"
+        |]
+      exitCode <- run' $ words "--custom-default=custom.nix runhaskell Main.hs"
+      exitCode `shouldBe` ExitSuccess
