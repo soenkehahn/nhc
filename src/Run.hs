@@ -62,7 +62,12 @@ createDefaultNixFileIfMissing options packageName = do
     when (not exists) $
         writeFile file $ normalizeLines [i|
             { pkgs ? import <nixpkgs> {},
-              src ? builtins.filterSource (path: type: type != "unknown" && baseNameOf path != ".git" && baseNameOf path != "result") ../.
+              src ? builtins.filterSource (path: type:
+                type != "unknown" &&
+                baseNameOf path != ".git" &&
+                baseNameOf path != "result" &&
+                baseNameOf path != "dist" &&
+                baseNameOf path != ".nhc") ../.
             }:
             {
                 build = pkgs.haskellPackages.buildLocalCabal src "#{packageName}";
