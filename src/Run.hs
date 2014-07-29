@@ -3,6 +3,7 @@
 module Run where
 
 import           Control.Applicative
+import           Control.Arrow
 import           Control.Exception
 import           Control.Monad
 import           Data.Maybe
@@ -145,7 +146,7 @@ nixBuild cabalFile nhcFile = do
     run :: IO ()
     run = do
         hPutStrLn stderr "building..."
-        exitCode <- system [i|nix-build #{nhcFile} -j4 -o #{link}|]
+        exitCode <- system [i|nix-build #{nhcFile} -j4 -o #{link} 1>&2 |]
         when (exitCode /= ExitSuccess) $ do
           hPutStrLn stderr "error executing nix-build to build environment"
           exitWith exitCode
@@ -155,7 +156,7 @@ createEnvSetup :: FilePath -> IO FilePath
 createEnvSetup buildResult = do
   let file = nhcDir </> "nhc-env.sh"
   contents <- readFile (buildResult </> "bin/load-env-nhc-build")
-  writeFile file (fiddleInArgument contents)
+  writeFile file $ silenceSourceStatements $ fiddleInArgument contents
   ExitSuccess <- system [i|chmod +x #{file}|]
   return file
  where
@@ -163,6 +164,14 @@ createEnvSetup buildResult = do
   fiddleInArgument script = unlines $
       unlines (take 13 (lines script)) :
       []
+
+  silenceSourceStatements :: String -> String
+  silenceSourceStatements =
+    lines >>>
+    map (\ l -> if "source" `elem` words l
+                  then l ++ " 1>&2"
+                  else l) >>>
+    unlines
 
 
 -- | Performs the command inside the environment.

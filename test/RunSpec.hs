@@ -4,6 +4,7 @@ module RunSpec where
 
 
 import           Test.Hspec
+import           Test.QuickCheck           hiding (Result)
 
 import           Control.Applicative
 import           Control.Concurrent.Thread
@@ -162,3 +163,9 @@ spec = do
         |]
       exitCode <- run' $ words "--custom-default=custom.nix runhaskell Main.hs"
       exitCode `shouldBe` ExitSuccess
+
+    it "does not modify stdout of the executed commands \
+       \(it should put all nhc-related output to stderr)" $ do
+      property $ forAll (listOf (elements ['a' .. 'z'])) $ \ s -> ioProperty $ insideBifunctors $ do
+        (output, ExitSuccess) <- capture $ run' $ ("echo" : s : [])
+        return (output === s ++ "\n")

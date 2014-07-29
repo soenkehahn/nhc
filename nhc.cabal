@@ -50,4 +50,5 @@ test-suite spec
     hspec,
     temporary,
     threads,
-    safe
+    safe,
+    QuickCheck
