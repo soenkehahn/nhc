@@ -69,9 +69,7 @@ createDefaultNixFileIfMissing options packageName = do
                 baseNameOf path != "dist" &&
                 baseNameOf path != ".nhc") ../.
             }:
-            {
-                build = pkgs.haskellPackages.buildLocalCabal src "#{packageName}";
-            }
+            pkgs.haskellPackages.buildLocalCabal src "#{packageName}"
           |]
     return file
 
@@ -105,7 +103,7 @@ createNhcNixFileIfMissing options defaultFile = do
 
                 hsEnv = pkgs.haskellPackages.ghcWithPackages
                     (hsPkgs :
-                     let package = (hsPkgs.callPackage #{".." </> defaultFile} { inherit pkgs; }).build;
+                     let package = (hsPkgs.callPackage #{".." </> defaultFile} { inherit pkgs; });
                      in
                         [ (hsPkgs.buildLocalCabal git_hdevtools_src "hdevtools") ] ++
                         package.buildInputs ++
