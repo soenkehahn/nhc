@@ -36,7 +36,16 @@ withNhcOptions args action = do
   let (nhcArgs, command) = span ("-" `isPrefixOf`) args
       parsed = parseOptions nhcArgs
   case parsedOptions parsed of
-    Just opts -> action opts command
+    Just opts -> if null command
+      then do
+        progName <- getProgName
+        hPutStrLn stderr $ normalizeLines [i|
+          No command provided.
+          Try '#{progName} --help'.
+         |]
+        return $ ExitFailure 1
+
+      else action opts command
     Nothing -> case parsedError parsed of
       Nothing -> do
         progName <- getProgName

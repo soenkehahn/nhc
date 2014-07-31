@@ -108,6 +108,11 @@ spec = do
       output <- capture_ $ run' $ words "--help"
       mapM_ (\ word -> (word `shouldSatisfy` (`isInfixOf` output))) ["execute", "COMMAND", "nix", "environment", "cabal", "http"]
 
+    it "outputs a usage message when invoked without arguments" $ insideBifunctors $ do
+      output <- hCapture_ [stderr] $ run' []
+      forM_ ["command", "--help"] $ \ w ->
+        output `shouldSatisfy` (w `isInfixOf`)
+
     it "executes cabal build" $ insideBifunctors $ do
       _ <- capture $ run' $ words "cabal build"
       return ()
