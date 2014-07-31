@@ -39,7 +39,7 @@ withNhcOptions args action = do
     Just opts -> if null command
       then do
         progName <- getProgName
-        hPutStrLn stderr $ normalizeLines [i|
+        hPutStr stderr $ normalizeLines [i|
           No command provided.
           Try '#{progName} --help'.
          |]
