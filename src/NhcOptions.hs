@@ -23,9 +23,12 @@ data NhcOptions = NhcOptions {
 instance Options NhcOptions where
   defineOptions = NhcOptions <$>
     defineOption optionType_bool (\ o -> o{
-      optionLongFlags = ["prof"],
-      optionShortFlags = ['p']
-     }) <*>
+        optionLongFlags = ["prof"],
+        optionShortFlags = ['p'],
+        optionDescription =
+          "Creates an environment where the profiling versions \
+          \of all dependencies are available."
+      }) <*>
     simpleOption "custom-default" Nothing
       "Custom default.nix file to be used. \
       \(Has to be used with an equal sign, \
