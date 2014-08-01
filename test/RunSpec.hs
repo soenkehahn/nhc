@@ -52,7 +52,7 @@ createPipeHandles = do
 
 
 run' :: [String] -> IO ExitCode
-run' command = run command (stdin, stdout)
+run' command = run (stdin, stdout) command
 
 spec :: Spec
 spec = do
@@ -75,7 +75,7 @@ spec = do
     it "executes interactive commands" $ insideBifunctors $ do
       (readEndStdin, writeEndStdin) <- createPipeHandles
       (readEndStdout, writeEndStdout) <- createPipeHandles
-      _ <- forkIO $ void $ run (words "./interactive_command.sh") (readEndStdin, writeEndStdout)
+      _ <- forkIO $ void $ run (readEndStdin, writeEndStdout) (words "./interactive_command.sh")
       let waitForStarted = do
             l <- hGetLine readEndStdout
             when (l /= "started") waitForStarted
@@ -86,7 +86,7 @@ spec = do
 
     it "executes ghci" $ insideBifunctors $ do
       (readEndStdin, writeEndStdin) <- createPipeHandles
-      wait :: IO (Result String) <- snd <$> (forkIO $ capture_ $ run (words "ghci") (readEndStdin, stdout))
+      wait :: IO (Result String) <- snd <$> (forkIO $ capture_ $ run (readEndStdin, stdout) (words "ghci"))
       mapM_ (hPutStrLn writeEndStdin) $
         "import Data.Bifunctor" :
         "bimap pred succ (1, 1)" :
@@ -174,3 +174,9 @@ spec = do
       property $ forAll (listOf (elements ['a' .. 'z'])) $ \ s -> ioProperty $ insideBifunctors $ do
         (output, ExitSuccess) <- capture $ run' $ ("echo" : s : [])
         return (output === s ++ "\n")
+
+    it "provides a --clean flag to delete .nhc" $ do
+      run' ["true"] `shouldReturn` ExitSuccess
+      doesDirectoryExist ".nhc" `shouldReturn` True
+      run' ["-c"] `shouldReturn` ExitSuccess
+      doesDirectoryExist ".nhc" `shouldReturn` False

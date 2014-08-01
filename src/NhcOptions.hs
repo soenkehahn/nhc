@@ -16,6 +16,7 @@ import           Utils
 
 data NhcOptions = NhcOptions {
     profiling :: Bool,
+    clean :: Bool,
     customDefaultFile :: Maybe FilePath
   }
     deriving Show
@@ -29,6 +30,13 @@ instance Options NhcOptions where
           "Creates an environment where the profiling versions \
           \of all dependencies are available."
       }) <*>
+    defineOption optionType_bool (\ o -> o{
+        optionLongFlags = ["clean"],
+        optionShortFlags = ['c'],
+        optionDescription =
+          "If this flag is set, nhc will clean all files it created. \
+          \(And do nothing else.)"
+      }) <*>
     simpleOption "custom-default" Nothing
       "Custom default.nix file to be used. \
       \(Has to be used with an equal sign, \
@@ -39,16 +47,7 @@ withNhcOptions args action = do
   let (nhcArgs, command) = span ("-" `isPrefixOf`) args
       parsed = parseOptions nhcArgs
   case parsedOptions parsed of
-    Just opts -> if null command
-      then do
-        progName <- getProgName
-        hPutStr stderr $ normalizeLines [i|
-          No command provided.
-          Try '#{progName} --help'.
-         |]
-        return $ ExitFailure 1
-
-      else action opts command
+    Just opts ->  action opts command
     Nothing -> case parsedError parsed of
       Nothing -> do
         progName <- getProgName

@@ -12,4 +12,4 @@ import           Run
 main :: IO ()
 main = do
   args <- getArgs
-  run args (stdin, stdout) >>= exitWith
+  run (stdin, stdout) args >>= exitWith

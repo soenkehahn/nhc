@@ -9,6 +9,7 @@ import           Control.Monad
 import           Data.Maybe
 import           Data.String.Interpolate
 import           System.Directory
+import           System.Environment
 import           System.Exit
 import           System.FilePath
 import           System.IO
@@ -28,21 +29,37 @@ nhcDir = ".nhc"
 handleExitCodes :: IO ExitCode -> IO ExitCode
 handleExitCodes = handle $ \ (exitCode :: ExitCode) -> return exitCode
 
-run :: [String] -> (Handle, Handle) -> IO ExitCode
-run args handles =
+run :: (Handle, Handle) -> [String] -> IO ExitCode
+run handles args =
   handleExitCodes $
-  withNhcOptions args $ \ nhcOptions (command : args) -> do
-    -- prerequisites
-    createDirectoryIfMissing True nhcDir
-    cabalFile <- getCabalFile
-    defaultFile <- createDefaultNixFileIfMissing nhcOptions (takeBaseName cabalFile)
-    nhcFile <- createNhcNixFileIfMissing nhcOptions defaultFile
-    -- building the environment
-    resultLink <- nixBuild cabalFile nhcFile
-    -- creating our own environment script
-    envSetup <- createEnvSetup resultLink
-    -- entering the environment and performing the given command
-    performCommand cabalFile resultLink envSetup command args handles
+  withNhcOptions args $ \ nhcOptions command ->
+    if clean nhcOptions then do
+      removeDirectoryRecursive nhcDir
+      return ExitSuccess
+     else do
+      case command of
+        [] -> do
+          progName <- getProgName
+          hPutStr stderr $ normalizeLines [i|
+            No command provided.
+            Try '#{progName} --help'.
+           |]
+          return $ ExitFailure 1
+        (command : args) -> execute handles nhcOptions command args
+
+execute :: (Handle, Handle) -> NhcOptions -> String -> [String] -> IO ExitCode
+execute handles nhcOptions command args = do
+  -- prerequisites
+  createDirectoryIfMissing True nhcDir
+  cabalFile <- getCabalFile
+  defaultFile <- createDefaultNixFileIfMissing nhcOptions (takeBaseName cabalFile)
+  nhcFile <- createNhcNixFileIfMissing nhcOptions defaultFile
+  -- building the environment
+  resultLink <- nixBuild cabalFile nhcFile
+  -- creating our own environment script
+  envSetup <- createEnvSetup resultLink
+  -- entering the environment and performing the given command
+  performCommand cabalFile resultLink envSetup command args handles
 
 
 getCabalFile :: IO FilePath
