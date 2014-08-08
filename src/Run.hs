@@ -112,18 +112,11 @@ createNhcNixFileIfMissing options defaultFile = do
                     config.cabal.libraryProfiling = #{if profiling options then "true" else "false"};
                 };
 
-                # https://github.com/schell/hdevtools/commit/9e34f7dd20fcf3654a57fbf414be4962cc279854
-                git_hdevtools_src = pkgs.fetchgit {
-                    url = "https://github.com/schell/hdevtools.git";
-                    rev = "9e34f7dd20fcf3654a57fbf414be4962cc279854";
-                    sha256 = "1720953a6a2dfd1bc1f2c0d1346834e44a452acfcaa6d8226216178fecb95de9";
-                };
-
                 hsEnv = pkgs.haskellPackages.ghcWithPackages
                     (hsPkgs :
                      let package = (hsPkgs.callPackage #{".." </> defaultFile} { inherit pkgs; });
                      in
-                        [ (hsPkgs.buildLocalCabal git_hdevtools_src "hdevtools") ] ++
+                        [ hsPkgs.hdevtools ] ++
                         package.buildInputs ++
                         package.nativeBuildInputs ++
                         package.propagatedBuildInputs ++
