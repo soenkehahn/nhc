@@ -116,7 +116,7 @@ createNhcNixFileIfMissing options defaultFile = do
                     (hsPkgs :
                      let package = (hsPkgs.callPackage #{".." </> defaultFile} { inherit pkgs; });
                      in
-                        [ hsPkgs.hdevtools ] ++
+                        [ hsPkgs.hdevtools hsPkgs.doctest ] ++
                         package.buildInputs ++
                         package.nativeBuildInputs ++
                         package.propagatedBuildInputs ++
