@@ -169,6 +169,16 @@ spec = do
       exitCode <- run' $ words "--custom-default=custom.nix runhaskell Main.hs"
       exitCode `shouldBe` ExitSuccess
 
+    it "uses 'default.nix' from the current working directory, if it exists" $ insideBifunctors $ do
+      writeFile "default.nix" $ normalizeLines [i|
+        { pkgs ? import <nixpkgs> {},
+          src ? ./.
+        }: abort "abort custom default.nix"
+       |]
+      (output, exitCode) <- hCapture [stderr] $ run' $ words "true"
+      exitCode `shouldSatisfy` (/= ExitSuccess)
+      output `shouldContain` "abort custom default.nix"
+
     it "does not modify stdout of the executed commands \
        \(it should put all nhc-related output to stderr)" $ do
       property $ forAll (listOf (elements ['a' .. 'z'])) $ \ s -> ioProperty $ insideBifunctors $ do

@@ -75,7 +75,7 @@ getCabalFile = do
 
 createDefaultNixFileIfMissing :: NhcOptions -> String -> IO FilePath
 createDefaultNixFileIfMissing options packageName = do
-    let file = fromMaybe (nhcDir </> "default.nix") (customDefaultFile options)
+    file <- lookupDefaultFile options
     exists <- fileExist file
     when (not exists) $
         writeFile file $ normalizeLines [i|
@@ -90,6 +90,16 @@ createDefaultNixFileIfMissing options packageName = do
             pkgs.haskellPackages.buildLocalCabal src "#{packageName}"
           |]
     return file
+
+lookupDefaultFile :: NhcOptions -> IO FilePath
+lookupDefaultFile options = do
+    defaultFromWorkingDirExists <- doesFileExist "./default.nix"
+    let defaultFromWorkingDir = if defaultFromWorkingDirExists
+          then Just "./default.nix"
+          else Nothing
+    return $ fromMaybe (nhcDir </> "default.nix") $
+        customDefaultFile options <|>
+        defaultFromWorkingDir
 
 -- | Creates a file 'nhc.nix' that is used to build the environment for
 -- checking the haskell sources. If the file already exists it is left
