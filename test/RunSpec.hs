@@ -179,6 +179,28 @@ spec = do
       exitCode `shouldSatisfy` (/= ExitSuccess)
       output `shouldContain` "abort custom default.nix"
 
+    it "allows to give the derivation as '{build = ...}" $ insideBifunctors $ do
+      writeFile "default.nix" $ normalizeLines [i|
+        { pkgs ? import <nixpkgs> {},
+          src ? ./.
+        }: {
+          build = pkgs.haskellPackages.buildLocalCabal src "bifunctors-example";
+        }
+       |]
+      (output, exitCode) <- capture $ run' $ words "echo foo"
+      exitCode `shouldBe` ExitSuccess
+      output `shouldContain` "foo"
+
+    it "allows to give the derivation without '{build = ...}" $ insideBifunctors $ do
+      writeFile "default.nix" $ normalizeLines [i|
+        { pkgs ? import <nixpkgs> {},
+          src ? ./.
+        }: pkgs.haskellPackages.buildLocalCabal src "bifunctors-example"
+       |]
+      (output, exitCode) <- capture $ run' $ words "echo foo"
+      exitCode `shouldBe` ExitSuccess
+      output `shouldContain` "foo"
+
     it "does not modify stdout of the executed commands \
        \(it should put all nhc-related output to stderr)" $ do
       property $ forAll (listOf (elements ['a' .. 'z'])) $ \ s -> ioProperty $ insideBifunctors $ do

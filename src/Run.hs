@@ -117,6 +117,8 @@ createNhcNixFileIfMissing options defaultFile = do
 
             let
 
+                inherit (builtins) elem attrNames;
+
                 pkgs = import <nixpkgs> {
                     config.allowUnfree = true;
                     config.cabal.libraryProfiling = #{if profiling options then "true" else "false"};
@@ -124,7 +126,10 @@ createNhcNixFileIfMissing options defaultFile = do
 
                 hsEnv = pkgs.haskellPackages.ghcWithPackages
                     (hsPkgs :
-                     let package = (hsPkgs.callPackage #{".." </> defaultFile} { inherit pkgs; });
+                     let packageExpression = (hsPkgs.callPackage #{".." </> defaultFile} { inherit pkgs; });
+                         package = if elem "build" (attrNames packageExpression)
+                           then packageExpression.build
+                           else packageExpression;
                      in
                         [ hsPkgs.hdevtools hsPkgs.doctest ] ++
                         package.buildInputs ++
