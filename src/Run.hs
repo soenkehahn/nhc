@@ -130,8 +130,15 @@ createNhcNixFileIfMissing options defaultFile = do
                          package = if elem "build" (attrNames packageExpression)
                            then packageExpression.build
                            else packageExpression;
+
+                         hdevtoolsSrc = pkgs.fetchgit {
+                           url = "https://github.com/schell/hdevtools.git";
+                           rev = "4ff36c55ed64a774067697d9830a490bb9028263";
+                           sha256 = "612946494aef28a0a9bf0e48b7e93f878f02791ec0735019ee49ae6e4eb04daf";
+                         };
+                         hdevtools = pkgs.haskellPackages.buildLocalCabal hdevtoolsSrc "hdevtools";
                      in
-                        [ hsPkgs.hdevtools hsPkgs.doctest ] ++
+                        [ hdevtools hsPkgs.doctest ] ++
                         package.buildInputs ++
                         package.nativeBuildInputs ++
                         package.propagatedBuildInputs ++
