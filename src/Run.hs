@@ -34,7 +34,9 @@ run handles args =
   handleExitCodes $
   withNhcOptions args $ \ nhcOptions command ->
     if clean nhcOptions then do
-      removeDirectoryRecursive nhcDir
+      exists <- doesDirectoryExist nhcDir
+      when exists $
+        removeDirectoryRecursive nhcDir
       return ExitSuccess
      else do
       case command of

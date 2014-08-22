@@ -207,8 +207,11 @@ spec = do
         (output, ExitSuccess) <- capture $ run' $ ("echo" : s : [])
         return (output === s ++ "\n")
 
-    it "provides a --clean flag to delete .nhc" $ do
+    it "provides a --clean flag to delete .nhc" $ insideBifunctors $ do
       run' ["true"] `shouldReturn` ExitSuccess
       doesDirectoryExist ".nhc" `shouldReturn` True
-      run' ["-c"] `shouldReturn` ExitSuccess
+      run' ["--clean"] `shouldReturn` ExitSuccess
       doesDirectoryExist ".nhc" `shouldReturn` False
+
+    it "does not complain if --clean does not find any .nhc" $ insideBifunctors $ do
+      run' ["--clean"] `shouldReturn` ExitSuccess
