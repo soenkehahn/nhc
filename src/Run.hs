@@ -3,7 +3,6 @@
 module Run where
 
 import           Control.Applicative
-import           Control.Arrow
 import           Control.Exception
 import           Control.Monad
 import           Data.Maybe
@@ -15,7 +14,6 @@ import           System.FilePath
 import           System.IO
 import           System.Posix.Files
 import           System.Process
-import           System.SetEnv
 
 import           NhcOptions
 import           Utils
@@ -77,6 +75,7 @@ createDefaultNixFileIfMissing options packageName = do
     when (not exists) $
         writeFile file $ normalizeLines [i|
             { pkgs ? import <nixpkgs> {},
+              zalora-nix-lib ? import <zalora-nix-lib> { inherit pkgs; },
               src ? builtins.filterSource (path: type:
                 type != "unknown" &&
                 baseNameOf path != ".git" &&
@@ -84,7 +83,10 @@ createDefaultNixFileIfMissing options packageName = do
                 baseNameOf path != "dist" &&
                 baseNameOf path != ".nhc") ../.
             }:
-            pkgs.haskellPackages.buildLocalCabal src "#{packageName}"
+            zalora-nix-lib.haskell.buildHaskell {
+              name = "#{packageName}";
+              inherit src;
+            }
           |]
     return file
 
@@ -103,6 +105,7 @@ lookupDefaultFile options = do
 performCommand :: FilePath -> FilePath -> String -> [String] -> (Handle, Handle) -> IO ExitCode
 performCommand cabalFile expressionFile command args (stdin, stdout) = do
     writeFile (nhcDir </> "script.sh") (unwords (command : map wrapBashArg args) ++ "\n")
+    unsetEnv "_PATH"
     let nixShellArgs =
           "--command" : unwords (("NHC_CABAL_FILE=" ++ cabalFile) : "bash" : (nhcDir </> "script.sh") : []) :
           "--max-jobs" : "4" : -- number of cpus?

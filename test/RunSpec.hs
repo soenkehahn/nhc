@@ -14,6 +14,7 @@ import           Data.List
 import           Data.String.Interpolate
 import           Safe
 import           System.Directory
+import           System.Environment
 import           System.Exit
 import           System.FilePath
 import           System.IO
@@ -131,7 +132,7 @@ spec = do
       before <- getDirectoryContents "."
       _ <- run' $ ["true"]
       after <- getDirectoryContents "."
-      after \\ before `shouldBe` [".nhc"]
+      after \\ before `shouldSatisfy` all ("." `isPrefixOf`)
 
     it "rebuilds the environment to include libraries added to the cabal file" $ insideBifunctors $ do
       _ <- run' $ words "cabal build"
