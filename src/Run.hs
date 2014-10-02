@@ -109,6 +109,7 @@ performCommand cabalFile expressionFile command args (stdin, stdout) = do
     let nixShellArgs =
           "--command" : unwords (("NHC_CABAL_FILE=" ++ cabalFile) : "bash" : (nhcDir </> "script.sh") : []) :
           "--max-jobs" : "4" : -- number of cpus?
+          "--keep-going" :
           expressionFile :
           []
     (Nothing, Nothing, Nothing, process) <- createProcess
