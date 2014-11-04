@@ -216,3 +216,9 @@ spec = do
 
     it "does not complain if --clean does not find any .nhc" $ insideBifunctors $ do
       run' ["--clean"] `shouldReturn` ExitSuccess
+
+    context "puts some tools in the PATH" $ do
+      forM_ ["hdevtools", "ghc", "cabal"] $ \ tool -> do
+        it tool $ insideBifunctors $ do
+          run' [tool, "--version"]
+            `shouldReturn` ExitSuccess
