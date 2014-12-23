@@ -6,6 +6,7 @@ import           Control.Applicative
 import           Control.Arrow
 import           Control.Exception
 import           Control.Monad
+import           Data.List
 import           Data.Maybe
 import           Data.String.Interpolate
 import           System.Directory
@@ -84,7 +85,15 @@ createDefaultNixFileIfMissing options packageName = do
                 baseNameOf path != "dist" &&
                 baseNameOf path != ".nhc") ../.
             }:
-            pkgs.haskellPackages.buildLocalCabal src "#{packageName}"
+            pkgs.haskellPackages.buildLocalCabalWithArgs {
+              inherit src;
+              name = "#{packageName}";
+              cabalDrvArgs = {
+                buildTools = [
+                  pkgs.haskellPackages.hdevtools
+                ];
+              };
+            }
           |]
     return file
 
@@ -103,9 +112,14 @@ lookupDefaultFile options = do
 performCommand :: FilePath -> FilePath -> String -> [String] -> (Handle, Handle) -> IO ExitCode
 performCommand cabalFile expressionFile command args (stdin, stdout) = do
     writeFile (nhcDir </> "script.sh") (unwords (command : map wrapBashArg args) ++ "\n")
-    let nixShellArgs =
-          "--command" : unwords (("NHC_CABAL_FILE=" ++ cabalFile) : "bash" : (nhcDir </> "script.sh") : []) :
+    let environmentVars =
+          map (\ (var, value) -> var ++ "=" ++ value) $
+          ("NHC_CABAL_FILE", cabalFile) :
+          []
+        nixShellArgs =
+          "--command" : unwords (environmentVars ++ "bash" : (nhcDir </> "script.sh") : []) :
           "--max-jobs" : "4" : -- number of cpus?
+          "--pure" :
           expressionFile :
           []
     (Nothing, Nothing, Nothing, process) <- createProcess

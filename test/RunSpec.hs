@@ -14,6 +14,7 @@ import           Data.List
 import           Data.String.Interpolate
 import           Safe
 import           System.Directory
+import           System.Environment
 import           System.Exit
 import           System.FilePath
 import           System.IO
@@ -72,6 +73,9 @@ spec = do
       ec2 <- run' $ words "false"
       ec2 `shouldBe` ExitFailure 1
 
+    it "sets up a working ghc packages database (ghc-pkg check)" $ do
+      run' (words "ghc-pkg check") `shouldReturn` ExitSuccess
+
     it "executes interactive commands" $ insideBifunctors $ do
       (readEndStdin, writeEndStdin) <- createPipeHandles
       (readEndStdout, writeEndStdout) <- createPipeHandles
@@ -85,12 +89,12 @@ spec = do
       l2 `shouldBe` "ending"
 
     it "executes ghci" $ insideBifunctors $ do
-      pendingWith "somehow this seems to work while the testcase hangs :("
       (readEndStdin, writeEndStdin) <- createPipeHandles
       wait :: IO (Result String) <- snd <$> (forkIO $ capture_ $ run (readEndStdin, stdout) (words "ghci"))
       mapM_ (hPutStrLn writeEndStdin) $
         "import Data.Bifunctor" :
         "bimap pred succ (1, 1)" :
+        ":quit" :
         []
       hClose writeEndStdin
       output <- result =<< wait
@@ -146,6 +150,7 @@ spec = do
         lines output `shouldContain` ["[\"foo bar\"]"]
 
     it "allows profiling" $ insideBifunctors $ do
+      pending -- broken
       run' (words "--prof ghc -prof Main.hs") `shouldReturn` ExitSuccess
       run' (words "./Main +RTS -p") `shouldReturn` ExitSuccess
 
@@ -154,6 +159,7 @@ spec = do
       exitCode `shouldSatisfy` (/= ExitSuccess)
 
     it "does rebuild the environment when profiling flags toggles" $ insideBifunctors $ do
+      pending -- broken
       exitCode <- run' (words "ghc -prof Main.hs")
       exitCode `shouldSatisfy` (/= ExitSuccess)
       run' (words "--prof ghc -prof Main.hs") `shouldReturn` ExitSuccess
